@@ -21,7 +21,7 @@ export default function RootLayout({
   const year = new Date().getFullYear()
   return (
     <html lang="ko">
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <div className="min-h-screen flex flex-col">
           <Header />
           <main className="flex-1">{children}</main>
