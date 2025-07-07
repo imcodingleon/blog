@@ -1,97 +1,64 @@
 "use client"
 
-import { useState } from "react"
-import { Plus, Edit, Trash2, Eye, FileText, BarChart3, Lock } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Plus, Edit, Trash2, Eye, FileText, BarChart3, Lock, LogOut, Shield } from "lucide-react"
+import { useAdminAuth } from "@/components/admin/admin-auth-context"
+import { useRouter } from "next/navigation"
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState("dashboard")
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [loginForm, setLoginForm] = useState({
-    username: "",
-    password: ""
-  })
-  const [loginError, setLoginError] = useState("")
+  const { adminUser, isAdminLoggedIn, isLoading, adminSignOut } = useAdminAuth()
+  const router = useRouter()
 
-  // 간단한 로그인 처리 (실제 프로덕션에서는 더 안전한 방법 사용)
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoginError("")
+  useEffect(() => {
+    // 관리자 로그인 상태 확인
+    console.log('Admin 페이지 인증 체크:', { isLoading, isAdminLoggedIn, adminUser: adminUser?.email })
     
-    // 간단한 하드코딩된 로그인 (실제로는 서버에서 검증)
-    if (loginForm.username === "admin" && loginForm.password === "password123") {
-      setIsLoggedIn(true)
-    } else {
-      setLoginError("사용자명 또는 비밀번호가 올바르지 않습니다.")
+    if (!isLoading && !isAdminLoggedIn) {
+      console.log('인증되지 않음 - 로그인 페이지로 리디렉션')
+      router.push('/admin/login')
+    } else if (!isLoading && isAdminLoggedIn) {
+      console.log('관리자 인증 완료 - 페이지 유지')
     }
+  }, [isLoading, isAdminLoggedIn, router, adminUser])
+
+  const handleLogout = async () => {
+    await adminSignOut()
+    router.push('/admin/login')
   }
 
-  const handleLogout = () => {
-    setIsLoggedIn(false)
-    setLoginForm({ username: "", password: "" })
-    setLoginError("")
-  }
-
-  // 로그인 폼 렌더링
-  if (!isLoggedIn) {
+  // 로딩 중
+  if (isLoading) {
     return (
       <div className="bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
+          <p className="mt-4 text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 로그인되지 않았을 때
+  if (!isAdminLoggedIn) {
+    return (
+      <div className="bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="max-w-md w-full space-y-8 text-center">
           <div>
             <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-black">
               <Lock className="h-6 w-6 text-white" />
             </div>
-            <h2 className="mt-6 text-center text-3xl font-bold text-black">관리자 로그인</h2>
+            <h2 className="mt-6 text-center text-3xl font-bold text-black">접근 권한이 없습니다</h2>
             <p className="mt-2 text-center text-sm text-gray-600">
-              관리자 패널에 접근하려면 로그인하세요
+              관리자 로그인이 필요합니다
             </p>
           </div>
-          <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                  사용자명
-                </label>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black"
-                  placeholder="사용자명을 입력하세요"
-                  value={loginForm.username}
-                  onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
-                />
-              </div>
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  비밀번호
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black"
-                  placeholder="비밀번호를 입력하세요"
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
-                />
-              </div>
-            </div>
-
-            {loginError && (
-              <div className="text-red-600 text-sm text-center">{loginError}</div>
-            )}
-
-            <div>
-              <button
-                type="submit"
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
-              >
-                로그인
-              </button>
-            </div>
-          </form>
+          <button
+            onClick={() => router.push('/admin/login')}
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
+          >
+            로그인하러 가기
+          </button>
         </div>
       </div>
     )
@@ -124,12 +91,19 @@ export default function Admin() {
             <h1 className="text-3xl font-bold text-black">관리자 패널</h1>
             <p className="mt-2 text-gray-600">블로그 관리 및 통계를 확인하세요</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
-          >
-            로그아웃
-          </button>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Shield className="h-4 w-4" />
+              <span>{adminUser?.email}</span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors flex items-center space-x-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>로그아웃</span>
+            </button>
+          </div>
         </div>
 
         {/* Navigation Tabs */}
@@ -206,28 +180,28 @@ export default function Admin() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {recentArticles.map((article) => (
-                      <tr key={article.id}>
+                      <tr key={article.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-black">{article.title}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              article.status === "발행됨"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}
-                          >
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            article.status === "발행됨" 
+                              ? "bg-green-100 text-green-800" 
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}>
                             {article.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{article.date}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {article.date}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {article.views.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <div className="flex space-x-2">
-                            <button className="text-black hover:text-gray-600">
+                            <button className="text-blue-600 hover:text-blue-800">
                               <Edit className="h-4 w-4" />
                             </button>
                             <button className="text-red-600 hover:text-red-800">
@@ -249,13 +223,73 @@ export default function Admin() {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-black">글 관리</h2>
-              <button className="bg-black text-white px-4 py-2 font-medium hover:bg-gray-800 transition-colors flex items-center">
-                <Plus className="h-4 w-4 mr-2" />새 글 작성
+              <button className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors flex items-center space-x-2">
+                <Plus className="h-4 w-4" />
+                <span>새 글 작성</span>
               </button>
             </div>
 
-            <div className="bg-white shadow-sm border border-gray-200 p-6">
-              <p className="text-gray-600">글 관리 기능이 여기에 표시됩니다.</p>
+            <div className="bg-white shadow-sm border border-gray-200">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        제목
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        상태
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        날짜
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        조회수
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        작업
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {recentArticles.map((article) => (
+                      <tr key={article.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-black">{article.title}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            article.status === "발행됨" 
+                              ? "bg-green-100 text-green-800" 
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}>
+                            {article.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {article.date}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {article.views.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="flex space-x-2">
+                            <button className="text-blue-600 hover:text-blue-800">
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button className="text-green-600 hover:text-green-800">
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button className="text-red-600 hover:text-red-800">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
