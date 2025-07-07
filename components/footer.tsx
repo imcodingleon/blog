@@ -37,11 +37,6 @@ export default function Footer({ year }: FooterProps) {
                   Articles
                 </Link>
               </li>
-              <li>
-                <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
-                  Contact
-                </Link>
-              </li>
             </ul>
           </div>
 
@@ -58,7 +53,10 @@ export default function Footer({ year }: FooterProps) {
         </div>
 
         <div className="mt-8 border-t border-gray-700 pt-8">
-          <p className="text-center text-gray-300">© {year}  All rights reserved.</p>
+          <p className="text-center text-gray-300">© {year} Modern Blog. All rights reserved.</p>
+          <p className="text-center text-gray-300 mt-2">
+            Contact: <a href="mailto:skwogusdld@gmail.com" className="underline hover:text-white transition-colors">skwogusdld@gmail.com</a>
+          </p>
         </div>
       </div>
     </footer>
