@@ -49,18 +49,8 @@ export default function Footer({ year }: FooterProps) {
             <h3 className="text-sm font-semibold uppercase tracking-wider">Connect</h3>
             <ul className="mt-4 space-y-2">
               <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors">
-                  Twitter
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                <a href="https://github.com/imcodingleon" target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-white transition-colors">
                   GitHub
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors">
-                  LinkedIn
                 </a>
               </li>
             </ul>
@@ -68,7 +58,7 @@ export default function Footer({ year }: FooterProps) {
         </div>
 
         <div className="mt-8 border-t border-gray-700 pt-8">
-          <p className="text-center text-gray-300">© {year} Modern Blog. All rights reserved.</p>
+          <p className="text-center text-gray-300">© {year}  All rights reserved.</p>
         </div>
       </div>
     </footer>
