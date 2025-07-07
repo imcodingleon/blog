@@ -1,10 +1,101 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Edit, Trash2, Eye, FileText, BarChart3 } from "lucide-react"
+import { Plus, Edit, Trash2, Eye, FileText, BarChart3, Lock } from "lucide-react"
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState("dashboard")
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [loginForm, setLoginForm] = useState({
+    username: "",
+    password: ""
+  })
+  const [loginError, setLoginError] = useState("")
+
+  // 간단한 로그인 처리 (실제 프로덕션에서는 더 안전한 방법 사용)
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoginError("")
+    
+    // 간단한 하드코딩된 로그인 (실제로는 서버에서 검증)
+    if (loginForm.username === "admin" && loginForm.password === "password123") {
+      setIsLoggedIn(true)
+    } else {
+      setLoginError("사용자명 또는 비밀번호가 올바르지 않습니다.")
+    }
+  }
+
+  const handleLogout = () => {
+    setIsLoggedIn(false)
+    setLoginForm({ username: "", password: "" })
+    setLoginError("")
+  }
+
+  // 로그인 폼 렌더링
+  if (!isLoggedIn) {
+    return (
+      <div className="bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-black">
+              <Lock className="h-6 w-6 text-white" />
+            </div>
+            <h2 className="mt-6 text-center text-3xl font-bold text-black">관리자 로그인</h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              관리자 패널에 접근하려면 로그인하세요
+            </p>
+          </div>
+          <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                  사용자명
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  required
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black"
+                  placeholder="사용자명을 입력하세요"
+                  value={loginForm.username}
+                  onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  비밀번호
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black"
+                  placeholder="비밀번호를 입력하세요"
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {loginError && (
+              <div className="text-red-600 text-sm text-center">{loginError}</div>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
+              >
+                로그인
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )
+  }
 
   const stats = [
     { name: "총 글 수", value: "24", icon: FileText },
@@ -28,9 +119,17 @@ export default function Admin() {
     <div className="bg-gray-50 min-h-screen">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-black">관리자 패널</h1>
-          <p className="mt-2 text-gray-600">블로그 관리 및 통계를 확인하세요</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-black">관리자 패널</h1>
+            <p className="mt-2 text-gray-600">블로그 관리 및 통계를 확인하세요</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+          >
+            로그아웃
+          </button>
         </div>
 
         {/* Navigation Tabs */}
