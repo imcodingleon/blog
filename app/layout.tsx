@@ -18,13 +18,14 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const year = new Date().getFullYear()
   return (
     <html lang="ko">
       <body className={inter.className}>
         <div className="min-h-screen flex flex-col">
           <Header />
           <main className="flex-1">{children}</main>
-          <Footer />
+          <Footer year={year} />
         </div>
       </body>
     </html>

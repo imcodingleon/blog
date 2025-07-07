@@ -1,6 +1,10 @@
 import Link from "next/link"
 
-export default function Footer() {
+interface FooterProps {
+  year: number
+}
+
+export default function Footer({ year }: FooterProps) {
   return (
     <footer className="bg-black text-white">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -64,7 +68,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-8 border-t border-gray-700 pt-8">
-          <p className="text-center text-gray-300">© {new Date().getFullYear()} Modern Blog. All rights reserved.</p>
+          <p className="text-center text-gray-300">© {year} Modern Blog. All rights reserved.</p>
         </div>
       </div>
     </footer>
