@@ -70,6 +70,11 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
+    // hydration mismatch 방지: 모바일/데스크탑 분기 전에 isMobile이 undefined면 렌더하지 않음
+    if (isMobile === undefined) {
+      return null
+    }
+
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
     const [_open, _setOpen] = React.useState(defaultOpen)
