@@ -5,6 +5,8 @@ import { getPostBySlug, getRecentPosts, incrementViewCount, debugListAllSlugs } 
 import { formatDate, estimateReadingTime, formatRelativeTime } from "@/lib/utils"
 import { Metadata } from "next"
 
+export const dynamic = 'force-dynamic';
+
 interface PostPageProps {
   params: Promise<{
     slug: string;

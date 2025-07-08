@@ -1,12 +1,17 @@
 import Link from "next/link"
 import { ArrowRight, BookOpen, Users, MessageCircle } from "lucide-react"
-import { getRecentPosts, getBlogStats } from "@/lib/blog-service"
+import { getPublishedPosts, getBlogStats } from "@/lib/blog-service"
 import { formatDate, estimateReadingTime, truncateText } from "@/lib/utils"
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
-  // 실제 데이터베이스에서 데이터 가져오기
-  const [recentPosts, blogStats] = await Promise.all([
-    getRecentPosts(3), // 최근 3개 글
+  // 한 번의 호출로 최근 글과 통계를 가져옵니다.
+  const [
+    { posts: recentPosts },
+    stats
+  ] = await Promise.all([
+    getPublishedPosts({ limit: 4, sortBy: 'created_at', sortOrder: 'desc' }),
     getBlogStats()
   ]);
 
@@ -134,7 +139,7 @@ export default async function Home() {
                 <BookOpen className="h-8 w-8 text-black" />
               </div>
               <dt className="mt-4 text-3xl font-bold text-black">
-                {blogStats.publishedPosts}
+                {stats.publishedPosts}
               </dt>
               <dd className="text-gray-600">발행된 글</dd>
             </div>
@@ -143,7 +148,7 @@ export default async function Home() {
                 <Users className="h-8 w-8 text-black" />
               </div>
               <dt className="mt-4 text-3xl font-bold text-black">
-                {blogStats.totalViews.toLocaleString()}
+                {stats.totalViews.toLocaleString()}
               </dt>
               <dd className="text-gray-600">총 조회수</dd>
             </div>
@@ -152,7 +157,7 @@ export default async function Home() {
                 <MessageCircle className="h-8 w-8 text-black" />
               </div>
               <dt className="mt-4 text-3xl font-bold text-black">
-                {blogStats.categoriesCount}
+                {stats.categoriesCount}
               </dt>
               <dd className="text-gray-600">카테고리</dd>
             </div>

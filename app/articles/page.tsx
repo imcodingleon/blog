@@ -4,6 +4,8 @@ import { getPublishedPosts, getAllCategories } from "@/lib/blog-service"
 import { formatDate, estimateReadingTime, truncateText } from "@/lib/utils"
 import { Suspense } from "react"
 
+export const dynamic = 'force-dynamic'
+
 interface ArticlesPageProps {
   searchParams: Promise<{
     category?: string;
