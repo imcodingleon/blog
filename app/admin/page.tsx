@@ -1,34 +1,104 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Edit, Trash2, Eye, FileText, BarChart3, Lock, LogOut, Shield } from "lucide-react"
+import { Plus, Edit, Trash2, Eye, FileText, BarChart3, Lock, LogOut, Shield, Search } from "lucide-react"
 import { useAdminAuth } from "@/components/admin/admin-auth-context"
 import { useRouter } from "next/navigation"
+import { getAllPosts, getBlogStats, deletePost } from "@/lib/blog-service"
+import { formatDate, estimateReadingTime } from "@/lib/utils"
+import PostForm from "@/components/admin/post-form"
+import type { Post, BlogStats } from "@/lib/types/blog"
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState("dashboard")
-  const { adminUser, isAdminLoggedIn, isLoading, adminSignOut } = useAdminAuth()
+  const [showPostForm, setShowPostForm] = useState(false)
+  const [editingPost, setEditingPost] = useState<Post | null>(null)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [stats, setStats] = useState<BlogStats | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft'>('all')
+  
+  const { adminUser, isAdminLoggedIn, isLoading: authLoading, adminSignOut } = useAdminAuth()
   const router = useRouter()
 
   useEffect(() => {
     // 관리자 로그인 상태 확인
-    console.log('Admin 페이지 인증 체크:', { isLoading, isAdminLoggedIn, adminUser: adminUser?.email })
-    
-    if (!isLoading && !isAdminLoggedIn) {
-      console.log('인증되지 않음 - 로그인 페이지로 리디렉션')
+    if (!authLoading && !isAdminLoggedIn) {
       router.push('/admin/login')
-    } else if (!isLoading && isAdminLoggedIn) {
-      console.log('관리자 인증 완료 - 페이지 유지')
+    } else if (!authLoading && isAdminLoggedIn) {
+      loadData()
     }
-  }, [isLoading, isAdminLoggedIn, router, adminUser])
+  }, [authLoading, isAdminLoggedIn, router])
+
+  const loadData = async () => {
+    setIsLoading(true)
+    try {
+      const [postsData, statsData] = await Promise.all([
+        getAllPosts({ limit: 50, sortBy: 'updated_at', sortOrder: 'desc' }),
+        getBlogStats()
+      ])
+      setPosts(postsData.posts)
+      setStats(statsData)
+    } catch (error) {
+      console.error('데이터 로딩 실패:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleLogout = async () => {
     await adminSignOut()
     router.push('/admin/login')
   }
 
+  const handleCreatePost = () => {
+    setEditingPost(null)
+    setShowPostForm(true)
+  }
+
+  const handleEditPost = (post: Post) => {
+    setEditingPost(post)
+    setShowPostForm(true)
+  }
+
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('정말로 이 글을 삭제하시겠습니까?')) return
+
+    try {
+      await deletePost(postId)
+      setPosts(posts.filter(post => post.id !== postId))
+      await loadData() // 통계 새로고침
+    } catch (error) {
+      console.error('글 삭제 실패:', error)
+      alert('글 삭제에 실패했습니다.')
+    }
+  }
+
+  const handlePostSave = (savedPost: Post) => {
+    setShowPostForm(false)
+    setEditingPost(null)
+    loadData() // 데이터 새로고침
+  }
+
+  const handlePostCancel = () => {
+    setShowPostForm(false)
+    setEditingPost(null)
+  }
+
+  const filteredPosts = posts.filter(post => {
+    const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         post.content.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesFilter = filterStatus === 'all' || 
+                         (filterStatus === 'published' && post.published) ||
+                         (filterStatus === 'draft' && !post.published)
+    
+    return matchesSearch && matchesFilter
+  })
+
   // 로딩 중
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -64,18 +134,20 @@ export default function Admin() {
     )
   }
 
-  const stats = [
-    { name: "총 글 수", value: "24", icon: FileText },
-    { name: "총 조회수", value: "12,345", icon: Eye },
-    { name: "댓글 수", value: "156", icon: FileText },
-    { name: "구독자 수", value: "1,234", icon: FileText },
-  ]
-
-  const recentArticles = [
-    { id: 1, title: "모던 웹 개발의 트렌드", status: "발행됨", date: "2024-01-15", views: 1234 },
-    { id: 2, title: "React 18의 새로운 기능들", status: "발행됨", date: "2024-01-10", views: 987 },
-    { id: 3, title: "TypeScript 베스트 프랙티스", status: "초안", date: "2024-01-05", views: 0 },
-  ]
+  // 글 작성/편집 폼 표시
+  if (showPostForm) {
+    return (
+      <div className="bg-gray-50 min-h-screen">
+        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+          <PostForm
+            post={editingPost || undefined}
+            onSave={handlePostSave}
+            onCancel={handlePostCancel}
+          />
+        </div>
+      </div>
+    )
+  }
 
   const tabs = [
     { id: "dashboard", name: "대시보드", icon: BarChart3 },
@@ -133,87 +205,150 @@ export default function Admin() {
         {activeTab === "dashboard" && (
           <div className="space-y-8">
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {stats.map((stat) => {
-                const Icon = stat.icon
-                return (
-                  <div key={stat.name} className="bg-white p-6 shadow-sm border border-gray-200">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <Icon className="h-8 w-8 text-black" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                        <p className="text-2xl font-bold text-black">{stat.value}</p>
-                      </div>
+            {stats && (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="bg-white p-6 shadow-sm border border-gray-200">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <FileText className="h-8 w-8 text-black" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">총 글 수</p>
+                      <p className="text-2xl font-bold text-black">{stats.totalPosts}</p>
                     </div>
                   </div>
-                )
-              })}
-            </div>
+                </div>
+                <div className="bg-white p-6 shadow-sm border border-gray-200">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <Eye className="h-8 w-8 text-green-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">게시된 글</p>
+                      <p className="text-2xl font-bold text-black">{stats.publishedPosts}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white p-6 shadow-sm border border-gray-200">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <BarChart3 className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">총 조회수</p>
+                      <p className="text-2xl font-bold text-black">{stats.totalViews.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white p-6 shadow-sm border border-gray-200">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <FileText className="h-8 w-8 text-purple-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">카테고리 수</p>
+                      <p className="text-2xl font-bold text-black">{stats.categoriesCount}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Recent Articles */}
             <div className="bg-white shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                 <h3 className="text-lg font-medium text-black">최근 글</h3>
+                <button
+                  onClick={handleCreatePost}
+                  className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>새 글 작성</span>
+                </button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        제목
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        상태
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        날짜
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        조회수
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        작업
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {recentArticles.map((article) => (
-                      <tr key={article.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-black">{article.title}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            article.status === "발행됨" 
-                              ? "bg-green-100 text-green-800" 
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}>
-                            {article.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {article.date}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {article.views.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex space-x-2">
-                            <button className="text-blue-600 hover:text-blue-800">
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button className="text-red-600 hover:text-red-800">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
+              
+              {isLoading ? (
+                <div className="p-6 text-center">로딩 중...</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          제목
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          상태
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          수정일
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          조회수
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          작업
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {posts.slice(0, 5).map((post) => (
+                        <tr key={post.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-black truncate max-w-xs">
+                              {post.title}
+                            </div>
+                            {post.category && (
+                              <div className="text-xs text-gray-500">{post.category}</div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              post.published 
+                                ? "bg-green-100 text-green-800" 
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}>
+                              {post.published ? "게시됨" : "초안"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(post.updated_at)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {post.view_count.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleEditPost(post)}
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              {post.published && (
+                                <a
+                                  href={`/articles/${post.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-green-600 hover:text-green-800"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </a>
+                              )}
+                              <button
+                                onClick={() => handleDeletePost(post.id)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -221,75 +356,145 @@ export default function Admin() {
         {/* Articles Tab */}
         {activeTab === "articles" && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-black">글 관리</h2>
-              <button className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors flex items-center space-x-2">
+            {/* Controls */}
+            <div className="bg-white p-4 shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+              <div className="flex flex-col sm:flex-row gap-4">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="글 제목 검색..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-transparent"
+                  />
+                </div>
+                
+                {/* Filter */}
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as 'all' | 'published' | 'draft')}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-transparent"
+                >
+                  <option value="all">모든 글</option>
+                  <option value="published">게시된 글</option>
+                  <option value="draft">초안</option>
+                </select>
+              </div>
+              
+              <button
+                onClick={handleCreatePost}
+                className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors flex items-center space-x-2"
+              >
                 <Plus className="h-4 w-4" />
                 <span>새 글 작성</span>
               </button>
             </div>
 
+            {/* Articles List */}
             <div className="bg-white shadow-sm border border-gray-200">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        제목
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        상태
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        날짜
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        조회수
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        작업
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {recentArticles.map((article) => (
-                      <tr key={article.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-black">{article.title}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            article.status === "발행됨" 
-                              ? "bg-green-100 text-green-800" 
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}>
-                            {article.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {article.date}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {article.views.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex space-x-2">
-                            <button className="text-blue-600 hover:text-blue-800">
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button className="text-green-600 hover:text-green-800">
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button className="text-red-600 hover:text-red-800">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-black">
+                  글 목록 ({filteredPosts.length}개)
+                </h3>
               </div>
+              
+              {isLoading ? (
+                <div className="p-6 text-center">로딩 중...</div>
+              ) : filteredPosts.length === 0 ? (
+                <div className="p-6 text-center text-gray-500">
+                  {searchTerm ? '검색 결과가 없습니다.' : '아직 작성된 글이 없습니다.'}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          제목
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          카테고리
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          상태
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          작성일
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          조회수
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          작업
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredPosts.map((post) => (
+                        <tr key={post.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-black">
+                              {post.title}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {estimateReadingTime(post.content)} 읽기
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {post.category || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              post.published 
+                                ? "bg-green-100 text-green-800" 
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}>
+                              {post.published ? "게시됨" : "초안"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(post.created_at)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {post.view_count.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleEditPost(post)}
+                                className="text-blue-600 hover:text-blue-800"
+                                title="편집"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              {post.published && (
+                                <a
+                                  href={`/articles/${post.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-green-600 hover:text-green-800"
+                                  title="보기"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </a>
+                              )}
+                              <button
+                                onClick={() => handleDeletePost(post.id)}
+                                className="text-red-600 hover:text-red-800"
+                                title="삭제"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
