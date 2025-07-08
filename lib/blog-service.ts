@@ -146,6 +146,8 @@ export async function getRecentPosts(limit: number = 5): Promise<Post[]> {
  * 슬러그로 글 조회
  */
 export async function getPostBySlug(slug: string, includeUnpublished: boolean = false): Promise<Post | null> {
+  console.log(`[getPostBySlug] 슬러그로 글 조회 시작: ${slug}, includeUnpublished: ${includeUnpublished}`);
+  
   let query = supabase
     .from('posts')
     .select('*')
@@ -155,18 +157,23 @@ export async function getPostBySlug(slug: string, includeUnpublished: boolean = 
   // 공개된 글만 조회 (관리자가 아닌 경우)
   if (!includeUnpublished) {
     query = query.eq('published', true);
+    console.log(`[getPostBySlug] 공개된 글만 조회하도록 필터 추가`);
   }
 
   const { data: post, error } = await query;
 
+  console.log(`[getPostBySlug] 쿼리 결과:`, { post: post ? 'found' : 'null', error: error ? error.message : 'none' });
+
   if (error) {
     if (error.code === 'PGRST116') {
+      console.log(`[getPostBySlug] 글을 찾을 수 없음 (PGRST116)`);
       return null; // 글을 찾을 수 없음
     }
-    console.error('Error fetching post by slug:', error);
+    console.error('[getPostBySlug] Error fetching post by slug:', error);
     throw new Error('게시글을 불러오는데 실패했습니다.');
   }
 
+  console.log(`[getPostBySlug] 성공적으로 글 조회:`, post ? { id: post.id, title: post.title, published: post.published } : 'null');
   return post;
 }
 
@@ -413,14 +420,15 @@ export async function getCategoryStats(): Promise<CategoryStats[]> {
 // =============================================
 
 /**
- * 슬러그 생성 유틸리티
+ * 슬러그 생성 유틸리티 (한글 지원)
  */
 export function generateSlug(title: string): string {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '') // 특수문자 제거
+    .replace(/[^a-z0-9가-힣\s-]/g, '') // 한글, 영문, 숫자, 공백, 하이픈만 허용
     .replace(/\s+/g, '-') // 공백을 하이픈으로
     .replace(/-+/g, '-') // 연속된 하이픈 제거
+    .replace(/^-|-$/g, '') // 시작과 끝의 하이픈 제거
     .trim();
 }
 
@@ -445,4 +453,25 @@ export async function isSlugUnique(slug: string, excludeId?: string): Promise<bo
   }
 
   return !data || data.length === 0;
+}
+
+/**
+ * 디버깅용: 모든 글의 슬러그 출력
+ */
+export async function debugListAllSlugs(): Promise<void> {
+  const { data: posts, error } = await supabase
+    .from('posts')
+    .select('id, title, slug, published')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching posts for debug:', error);
+    return;
+  }
+
+  console.log('=== 데이터베이스의 모든 글 슬러그 ===');
+  posts?.forEach(post => {
+    console.log(`ID: ${post.id}, 제목: "${post.title}", 슬러그: "${post.slug}", 발행: ${post.published}`);
+  });
+  console.log('==================================');
 } 

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Calendar, Clock, Tag, ArrowLeft, Eye } from "lucide-react"
-import { getPostBySlug, getRecentPosts, incrementViewCount } from "@/lib/blog-service"
+import { getPostBySlug, getRecentPosts, incrementViewCount, debugListAllSlugs } from "@/lib/blog-service"
 import { formatDate, estimateReadingTime, formatRelativeTime } from "@/lib/utils"
 import { Metadata } from "next"
 
@@ -14,7 +14,8 @@ interface PostPageProps {
 // 메타데이터 생성
 export async function generateMetadata({ params }: PostPageProps): Promise<Metadata> {
   const resolvedParams = await params;
-  const post = await getPostBySlug(resolvedParams.slug)
+  const decodedSlug = decodeURIComponent(resolvedParams.slug);
+  const post = await getPostBySlug(decodedSlug, true) // 임시로 미발행 글도 조회
 
   if (!post) {
     return {
@@ -90,7 +91,14 @@ function renderMarkdown(content: string) {
 
 export default async function PostPage({ params }: PostPageProps) {
   const resolvedParams = await params;
-  const post = await getPostBySlug(resolvedParams.slug)
+  const decodedSlug = decodeURIComponent(resolvedParams.slug);
+  console.log(`[PostPage] 요청된 슬러그: ${resolvedParams.slug}`);
+  console.log(`[PostPage] 디코딩된 슬러그: ${decodedSlug}`);
+  
+  // 디버깅: 모든 글의 슬러그 출력
+  await debugListAllSlugs();
+  
+  const post = await getPostBySlug(decodedSlug, true) // 임시로 미발행 글도 조회
   
   if (!post) {
     notFound()

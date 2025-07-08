@@ -338,14 +338,15 @@ export async function getCategoryStats(): Promise<CategoryStats[]> {
 // =============================================
 
 /**
- * 슬러그 생성
+ * 슬러그 생성 (한글 지원)
  */
 export function generateSlug(title: string): string {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9가-힣\s-]/g, '') // 특수문자 제거
+    .replace(/[^a-z0-9가-힣\s-]/g, '') // 한글, 영문, 숫자, 공백, 하이픈만 허용
     .replace(/\s+/g, '-') // 공백을 하이픈으로
-    .replace(/-+/g, '-') // 연속 하이픈 제거
+    .replace(/-+/g, '-') // 연속된 하이픈 제거
+    .replace(/^-|-$/g, '') // 시작과 끝의 하이픈 제거
     .trim();
 }
 
