@@ -5,6 +5,7 @@ import "./globals.css"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { AdminAuthProvider } from "@/components/admin/admin-auth-context"
+import Script from "next/script"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -22,6 +23,14 @@ export default function RootLayout({
   const year = new Date().getFullYear()
   return (
     <html lang="ko">
+      <head>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8833975006107218"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
+      </head>
       <body className={inter.className} suppressHydrationWarning>
         <AdminAuthProvider>
           <div className="min-h-screen flex flex-col">
