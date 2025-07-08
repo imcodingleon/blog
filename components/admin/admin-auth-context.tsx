@@ -24,6 +24,19 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
 
+  // 로컬 스토리지 정리 함수
+  const clearAuthData = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('admin-logged-in')
+      localStorage.removeItem('admin-user')
+      // Supabase 관련 토큰도 정리
+      localStorage.removeItem('sb-localhost-auth-token')
+      localStorage.removeItem('sb-auth-token')
+      sessionStorage.removeItem('sb-localhost-auth-token')
+      sessionStorage.removeItem('sb-auth-token')
+    }
+  }
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -36,38 +49,50 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log('AdminAuthContext: 세션 확인 시작')
         
-        // 로컬 스토리지 먼저 확인 (클라이언트에서만)
-        const adminLoggedIn = localStorage.getItem('admin-logged-in')
-        const adminUserData = localStorage.getItem('admin-user')
-        
-        console.log('로컬 스토리지 확인:', { adminLoggedIn, hasUserData: !!adminUserData })
-        
-        if (adminLoggedIn === 'true' && adminUserData) {
-          const user = JSON.parse(adminUserData)
-          console.log('로컬 스토리지에서 사용자 정보 로드:', user.email)
-          setAdminUser(user)
-          setIsAdminLoggedIn(true)
-        }
-        
-        // Supabase 세션 확인
-        const { session } = await getAdminSession()
-        console.log('Supabase 세션 확인:', { hasSession: !!session })
-        
-        if (session?.user) {
-          console.log('Supabase 세션에서 사용자 정보 업데이트:', session.user.email)
-          setAdminUser(session.user)
-          setIsAdminLoggedIn(true)
-          localStorage.setItem('admin-logged-in', 'true')
-          localStorage.setItem('admin-user', JSON.stringify(session.user))
-        } else if (!adminLoggedIn) {
-          // 로컬 스토리지에도 없고 세션도 없으면 로그아웃 상태
+        // Supabase 세션 확인 (토큰 오류 처리 포함)
+        try {
+          const { session, error } = await getAdminSession()
+          console.log('Supabase 세션 확인:', { hasSession: !!session, error })
+          
+          if (error) {
+            console.error('세션 확인 중 오류:', error)
+            // 토큰 관련 오류인 경우 정리
+            if (error.message.includes('Invalid Refresh Token') || 
+                error.message.includes('refresh_token_not_found') ||
+                error.message.includes('JWT expired')) {
+              console.log('유효하지 않은 토큰으로 인한 오류 - 인증 데이터 정리')
+              clearAuthData()
+            }
+            setAdminUser(null)
+            setIsAdminLoggedIn(false)
+          } else if (session?.user) {
+            console.log('Supabase 세션에서 사용자 정보 확인:', session.user.email)
+            setAdminUser(session.user)
+            setIsAdminLoggedIn(true)
+            // 유효한 세션이 있으면 로컬 스토리지 업데이트
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('admin-logged-in', 'true')
+              localStorage.setItem('admin-user', JSON.stringify(session.user))
+            }
+          } else {
+            // 세션이 없으면 로컬 스토리지도 정리
+            console.log('세션 없음 - 로그아웃 상태')
+            clearAuthData()
+            setAdminUser(null)
+            setIsAdminLoggedIn(false)
+          }
+        } catch (sessionError) {
+          console.error('세션 확인 중 예외:', sessionError)
+          // 세션 확인 실패 시 로컬 데이터 정리
+          clearAuthData()
           setAdminUser(null)
           setIsAdminLoggedIn(false)
-          localStorage.removeItem('admin-logged-in')
-          localStorage.removeItem('admin-user')
         }
       } catch (error) {
         console.error('관리자 세션 확인 오류:', error)
+        clearAuthData()
+        setAdminUser(null)
+        setIsAdminLoggedIn(false)
       } finally {
         setIsLoading(false)
       }
@@ -91,10 +116,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         console.log('세션 없음 - 로그아웃 상태로 변경')
         setAdminUser(null)
         setIsAdminLoggedIn(false)
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('admin-logged-in')
-          localStorage.removeItem('admin-user')
-        }
+        clearAuthData()
       }
       setIsLoading(false)
     })
@@ -107,12 +129,13 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       await signOutAdmin()
       setAdminUser(null)
       setIsAdminLoggedIn(false)
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('admin-logged-in')
-        localStorage.removeItem('admin-user')
-      }
+      clearAuthData()
     } catch (error) {
       console.error('관리자 로그아웃 오류:', error)
+      // 로그아웃 실패해도 로컬 데이터는 정리
+      clearAuthData()
+      setAdminUser(null)
+      setIsAdminLoggedIn(false)
     }
   }
 

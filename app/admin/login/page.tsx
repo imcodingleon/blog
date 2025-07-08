@@ -1,10 +1,6 @@
-import { AdminLoginForm } from '@/components/admin/admin-login-form'
-import { Metadata } from 'next'
+'use client'
 
-export const metadata: Metadata = {
-  title: '관리자 로그인 - AI 개발자 배성현의 블로그',
-  description: '관리자 전용 로그인 페이지',
-}
+import { AdminLoginForm } from '@/components/admin/admin-login-form'
 
 export default function AdminLoginPage() {
   return <AdminLoginForm />

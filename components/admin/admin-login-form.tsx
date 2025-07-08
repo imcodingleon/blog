@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { signInAdmin } from '@/lib/supabase-client'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,42 @@ export function AdminLoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+
+  // 컴포넌트 마운트 시 기존 인증 데이터 정리
+  useEffect(() => {
+    const clearAllAuthData = () => {
+      try {
+        // 로컬 스토리지 정리
+        localStorage.removeItem('admin-logged-in')
+        localStorage.removeItem('admin-user')
+        localStorage.removeItem('sb-localhost-auth-token')
+        localStorage.removeItem('sb-auth-token')
+        
+        // 세션 스토리지 정리
+        sessionStorage.removeItem('sb-localhost-auth-token')
+        sessionStorage.removeItem('sb-auth-token')
+        
+        // Supabase 관련 모든 키 정리
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sb-') || key.includes('supabase')) {
+            localStorage.removeItem(key)
+          }
+        })
+        
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.startsWith('sb-') || key.includes('supabase')) {
+            sessionStorage.removeItem(key)
+          }
+        })
+        
+        console.log('기존 인증 데이터 정리 완료')
+      } catch (error) {
+        console.error('인증 데이터 정리 중 오류:', error)
+      }
+    }
+
+    clearAllAuthData()
+  }, [])
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault()
