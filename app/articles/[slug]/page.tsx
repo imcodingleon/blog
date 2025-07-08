@@ -6,14 +6,15 @@ import { formatDate, estimateReadingTime, formatRelativeTime } from "@/lib/utils
 import { Metadata } from "next"
 
 interface PostPageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  }
+  }>
 }
 
 // 메타데이터 생성
 export async function generateMetadata({ params }: PostPageProps): Promise<Metadata> {
-  const post = await getPostBySlug(params.slug)
+  const resolvedParams = await params;
+  const post = await getPostBySlug(resolvedParams.slug)
 
   if (!post) {
     return {
@@ -88,7 +89,8 @@ function renderMarkdown(content: string) {
 }
 
 export default async function PostPage({ params }: PostPageProps) {
-  const post = await getPostBySlug(params.slug)
+  const resolvedParams = await params;
+  const post = await getPostBySlug(resolvedParams.slug)
   
   if (!post) {
     notFound()

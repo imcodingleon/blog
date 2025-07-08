@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
-import { getAdminSession, onAdminAuthStateChange, signOutAdmin } from '@/lib/supabase-admin'
+import { getAdminSession, onAdminAuthStateChange, signOutAdmin } from '@/lib/supabase-client'
 
 interface AdminAuthContextType {
   adminUser: User | null

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Save, Eye, ArrowLeft, Tag, Hash, ImageIcon } from "lucide-react"
-import { createPost, updatePost, getAllCategories, generateSlug, isSlugUnique } from "@/lib/blog-service"
+import { createPost, updatePost, getAllCategories, generateSlug, isSlugUnique } from "@/lib/blog-service-client"
 import type { Post, CreatePostData, UpdatePostData, Category } from "@/lib/types/blog"
 
 interface PostFormProps {

@@ -5,11 +5,11 @@ import { formatDate, estimateReadingTime, truncateText } from "@/lib/utils"
 import { Suspense } from "react"
 
 interface ArticlesPageProps {
-  searchParams: {
+  searchParams: Promise<{
     category?: string;
     page?: string;
     search?: string;
-  }
+  }>
 }
 
 // 클라이언트 컴포넌트로 분리할 필터링/검색 컴포넌트
@@ -118,9 +118,10 @@ function Pagination({
 }
 
 export default async function Articles({ searchParams }: ArticlesPageProps) {
-  const category = searchParams.category;
-  const search = searchParams.search;
-  const page = parseInt(searchParams.page || '1');
+  const resolvedSearchParams = await searchParams;
+  const category = resolvedSearchParams.category;
+  const search = resolvedSearchParams.search;
+  const page = parseInt(resolvedSearchParams.page || '1');
   const postsPerPage = 9;
 
   // 실제 데이터베이스에서 데이터 가져오기
